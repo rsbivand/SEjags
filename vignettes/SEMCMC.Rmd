@@ -172,7 +172,7 @@ This formula will be used in all the models that we fit below.
 ```{r echo = FALSE, results = "hide", message = FALSE}
 library(SEMCMC)
 #Load precomputed results
-load("SEMCMC.RData")
+#load("SEMCMC.RData")
 ```
 
 In the follwoing examples, we willbe fittind models SEM, SDM and SAC with lagged
@@ -183,7 +183,7 @@ covariates. Other models can be fitted in a similar way by setting argument
 
 We will start with the SEM model, using both jags and stan:
 
-```{r results = "hide", eval = FALSE}
+```{r results = "hide", eval = TRUE}
 library(SEMCMC)
 #JAGS
 sem.jags <- SEMCMC(m.form, data = columbus, W = W, model = "sem", sampler = "jags")
@@ -244,7 +244,7 @@ knitr::kable(tab.sem)
 
 ## SDM model
 
-```{r results = "hide", eval = FALSE}
+```{r results = "hide", eval = TRUE}
 library(SEMCMC)
 #JAGS
 sdm.jags <- SEMCMC(m.form, data = columbus, W = W, model = "sdm", sampler = "jags")
@@ -279,7 +279,7 @@ knitr::kable(tab.sdm)
 
 ##SAC model with lagged covariates
 
-```{r results = "hide", eval = FALSE}
+```{r results = "hide", eval = TRUE}
 #JAGS
 sacmixed.jags <- SEMCMC(m.form, data = columbus, W = W, model = "sacmixed",
   sampler = "jags", n.burnin = 2000, n.iter = 5000, n.thin = 5)
