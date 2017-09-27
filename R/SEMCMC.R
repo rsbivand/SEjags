@@ -60,7 +60,7 @@
 #' sacmixed.stan <- SEMCMC(m.form, data = columbus, W = W, model = "sacmixed", sampler = "stan")
 #' 
 #' Use binary adjancecy matrix with CAR models
-#' W.bin <- nb2mat(col.gal.nb, style = "B")
+#' W.bin <- spdep::nb2mat(col.gal.nb, style = "B")
 #'
 #' car.jags <- SEMCMC(m.form, data = columbus, W = W.bin, model = "car",  sampler = "jags")
 #' car.stan <- SEMCMC(m.form, data = columbus, W = W.bin, model = "car", sampler = "stan")
@@ -82,6 +82,30 @@
 #' impacts(car.stan, W)
 #' }
 #'
+#' #Example on logit and probit models
+#' \dontrun{
+#' #Example form the spatialprobit package using the Katrina dataset
+#'  data(Katrina, package = "spatialprobit")
+#' #Subset 100 shops
+#' set.seed(1)
+#' Katrina.red <- Katrina[sample(1:nrow(Katrina), 50), ]
+#'  nb <- spdep::knn2nb(spdep::knearneigh(cbind(Katrina.red$lat, Katrina.red$long), k=11))
+#'  W <- spdep::nb2mat(nb, style="W")
+#'
+#' m.formlogit <- y1 ~ flood_depth + log_medinc + small_size + large_size +
+#'   low_status_customers +  high_status_customers + owntype_sole_proprietor +
+#'   owntype_national_chain
+#'  #Logit model
+#'  semlogit.jags <- SEMCMC(m.formlogit, data = Katrina.red, W = W, 
+#'    model = "sem", sampler = "jags", link = "logit")
+#'  semlogit.stan <- SEMCMC(m.formlogit, data = Katrina.red, W = W,
+#'    model = "sem", sampler = "stan", link = "logit")
+#'  #Probit model
+#'  semprobit.jags <- SEMCMC(m.formlogit, data = Katrina.red, W = W,
+#'    model = "sem", sampler = "jags", link = "probit")
+#'  semprobit.stan <- SEMCMC(m.formlogit, data = Katrina.red, W = W,
+#'    model = "sem", sampler = "stan", link = "probit")
+#' }
 
 SEMCMC <- function(formula, data, W, model = "sem", link = "identity",
   n.burnin = 1000, n.iter = 1000, n.thin = 1, linear.predictor = FALSE,
@@ -230,26 +254,31 @@ SEMCMC <- function(formula, data, W, model = "sem", link = "identity",
   d.jags$nvar <- ncol(d.jags$X)
 
   #Define initial values
-  d.inits <- list(b = matrix(0, nrow = d.jags$nvar, ncol = 1), tau = 1)
-
+  d.inits <- list(b = matrix(0, nrow = d.jags$nvar, ncol = 1))
 
   #Model specific inits
   if(model %in% c("sem", "sdem", "car")) {
      d.inits$lambda <- 0 
-     variable.names <- c("b", "lambda", "tau")
+     variable.names <- c("b", "lambda")
      model.file <- ifelse(model == "car", "car", "sem")
   } else if(model %in% c("slm", "sdm")) {
      d.inits$rho <- 0 
-     variable.names <- c("b", "rho", "tau")
+     variable.names <- c("b", "rho")
      model.file <- "slm"
   } else if(model %in% c("slx")) {
-     variable.names <- c("b", "tau")
+     variable.names <- c("b")
      model.file <- "slx"
   } else if(model %in% c("sac", "sacmixed")) {
     d.inits$lambda <- 0
     d.inits$rho <- 0
-    variable.names <- c("b", "lambda", "rho", "tau")
+    variable.names <- c("b", "lambda", "rho")
     model.file <- "sac"
+  }
+
+  #Check link to add 'tau'
+  if(!link %in% c("logit", "probit")) {
+    d.inits$tau <- 1
+    variable.names <- c(variable.names, "tau")
   }
 
   #Save linear predictor?
@@ -279,13 +308,6 @@ SEMCMC <- function(formula, data, W, model = "sem", link = "identity",
   model.path <- system.file (paste0(sampler, "_models/", model.file),
     package = "SEMCMC")
 
-
-  #Remove tau in models that do not require it (slm spatial probit only?)
-  if(model == "slm" & link == "probit") {
-    d.inits <- d.inits[ - which(names(d.inits) == "tau") ]
-    variable.names <- variable.names[ - which(variable.names == "tau") ]
-  }
-
   #Run models
 
   if(sampler == "jags") {
@@ -303,6 +325,7 @@ SEMCMC <- function(formula, data, W, model = "sem", link = "identity",
 
   } else { #stan
     warning("Add inits to stan")
+    #stan_model(model.path) #This should avoid recompiling the model each time it is run, but this does not seem to work...
 
     jm1.samp <- stan(model.path, data = d.jags, chains = 1,
       iter = n.iter * n.thin + n.burnin, warmup = n.burnin, thin = n.thin,
@@ -319,6 +342,7 @@ SEMCMC <- function(formula, data, W, model = "sem", link = "identity",
   attr(jm1.samp, "nvar") <- d.jags$nvar
   attr(jm1.samp, "model") <- model
   attr(jm1.samp, "sampler") <- sampler
+  attr(jm1.samp, "link") <- link
 
     return(jm1.samp)
 }
