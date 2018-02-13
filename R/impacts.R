@@ -41,7 +41,7 @@ impacts.SEMCMC <- function(obj, ...) {
 
   #So far, impacts only implemented for Gaussian responses
   link <- attr(obj, "link")
-  if(link %in% c("probit", "logit") | link != "indentity") {
+  if(link %in% c("probit", "logit") | link != "identity") {
     stop("Impacts not implemented for this type of link.")
   }
 
@@ -87,6 +87,8 @@ impacts.SEMCMC <- function(obj, ...) {
     slx = impacts.SEMCMC.sdem(objres, W, idx.var, var.names),#Same as SDEM
     sac = impacts.SEMCMC.slm(objres, W, idx.var, var.names),
     sacmixed = impacts.SEMCMC.sdm(objres, W, idx.var, var.names),
+    sma = impacts.SEMCMC.sem(objres, W, idx.var, var.names),
+    smamixed = impacts.SEMCMC.sdem(objres, W, idx.var, var.names),
     car = impacts.SEMCMC.sem(objres, idx.var, var.names),
   )
 
